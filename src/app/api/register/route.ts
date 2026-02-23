@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
+
 
 const schema = z.object({
   orgName: z.string().min(2).max(80),
@@ -28,34 +30,33 @@ export async function POST(req: Request) {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  const result = await prisma.$transaction(async (tx) => {
-    const organization = await tx.organization.create({
-      data: {
-        name: orgName.trim(),
-        locations: {
-          create: [{ name: "Principal" }],
-        },
-      },
-      include: { locations: true },
-    });
-
-    const user = await tx.user.create({
-      data: {
-        email: emailNorm,
-        name: name.trim(),
-        passwordHash,
-        lastOrganizationId: organization.id,
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "OWNER",
-          },
-        },
-      },
-    });
-
-    return { userId: user.id, organizationId: organization.id };
+  const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+  const organization = await tx.organization.create({
+    data: {
+      name: orgName.trim(),
+      locations: {
+        create: [{ name: "Principal" }]
+      }
+    }
   });
+
+  const user = await tx.user.create({
+    data: {
+      email: emailNorm,
+      name: name.trim(),
+      passwordHash,
+      lastOrganizationId: organization.id,
+      memberships: {
+        create: {
+          organizationId: organization.id,
+          role: "OWNER"
+        }
+      }
+    }
+  });
+
+  return { userId: user.id, organizationId: organization.id };
+});
 
   return NextResponse.json(result, { status: 201 });
 }
