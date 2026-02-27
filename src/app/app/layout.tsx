@@ -1,38 +1,18 @@
-import Link from "next/link";
-import LogoutButton from "@/components/logout-button";
+import Sidebar from "@/components/app/sidebar";
+import Topbar from "@/components/app/topbar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen grid grid-cols-[260px_1fr]">
-      <aside className="border-r p-4">
-        <div className="text-lg font-semibold">Autopartes</div>
+    <div className="min-h-screen bg-gradient-to-br from-violet-200 via-purple-200 to-indigo-300">
+      <div className="min-h-screen grid grid-cols-[auto_1fr]">
+        <Sidebar />
 
-        <nav className="mt-6 space-y-1">
-          <Link className="block rounded-md px-3 py-2 hover:bg-gray-100" href="/app">
-            Dashboard
-          </Link>
-          <Link className="block rounded-md px-3 py-2 hover:bg-gray-100" href="/app/vehicles">
-            Vehículos
-          </Link>
-          <Link className="block rounded-md px-3 py-2 hover:bg-gray-100" href="/app/inventory">
-            Inventario
-          </Link>
-          <Link className="block rounded-md px-3 py-2 hover:bg-gray-100" href="/app/sales">
-            Ventas
-          </Link>
-          <Link className="block rounded-md px-3 py-2 hover:bg-gray-100" href="/app/settings">
-            Ajustes
-          </Link>
-        </nav>
-      </aside>
-
-      <div className="flex flex-col">
-        <header className="border-b p-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600">Panel</div>
-          <LogoutButton />
-        </header>
-
-        <main className="p-6">{children}</main>
+        <div className="min-w-0 p-6">
+          <div className="rounded-2xl bg-white/90 backdrop-blur border shadow-sm overflow-hidden">
+            <Topbar title="Autopartes" subtitle="Gestión de inventario y ventas" />
+            <main className="p-6">{children}</main>
+          </div>
+        </div>
       </div>
     </div>
   );

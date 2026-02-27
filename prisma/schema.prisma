@@ -19,32 +19,50 @@ enum Role {
   VIEWER
 }
 
+enum GlobalRole {
+  SUPERADMIN
+  USER
+}
+
+enum StockStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  DISCARDED
+}
+
 model User {
-  id                String       @id @default(cuid())
-  email             String       @unique
-  name              String?
-  passwordHash      String
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                 String      @id @default(cuid())
+  email              String      @unique
+  name               String?
+  passwordHash       String
+  globalRole         GlobalRole  @default(USER)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
   lastOrganizationId String?
 
-  memberships       Membership[]
-  sales             Sale[]       @relation("SalesSoldBy")
+  memberships        Membership[]
+  sales              Sale[]      @relation("SalesSoldBy")
 }
 
 model Organization {
-  id          String        @id @default(cuid())
-  name        String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id               String           @id @default(cuid())
+  name             String
+  joinCodeHash     String?
+  joinCodeExpiresAt DateTime?
+  joinCodeMaxUses  Int?
+  joinCodeUses     Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  memberships Membership[]
-  locations   Location[]
-  vehicles    Vehicle[]
-  partModels  PartModel[]
-  stockItems  StockItem[]
-  sales       Sale[]
-  exchangeRates ExchangeRate[]
+  memberships      Membership[]
+  locations        Location[]
+  vehicles         Vehicle[]
+  partModels       PartModel[]
+  stockItems       StockItem[]
+  sales            Sale[]
+  exchangeRates    ExchangeRate[]
+  allowedEmails    OrgAllowedEmail[]
 }
 
 model Membership {
@@ -86,21 +104,21 @@ model ExchangeRate {
 }
 
 model Vehicle {
-  id             String       @id @default(cuid())
-  organizationId String
-  make           String
-  model          String
-  year           Int
-  trim           String?
-  engineCode     String?
-  vin            String?
-  notes          String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  organizationId  String
+  make            String
+  model           String
+  year            Int
+  trim            String?
+  engineCode      String?
+  vin             String?
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   createdByUserId String?
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  stockItems     StockItem[]
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  stockItems      StockItem[]
 
   @@index([organizationId])
   @@index([organizationId, make, model, year])
@@ -108,52 +126,45 @@ model Vehicle {
 }
 
 model PartModel {
-  id             String       @id @default(cuid())
-  organizationId String
-  sku            String
-  name           String
-  category       String
-  compatibility  String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  organizationId  String
+  sku             String
+  name            String
+  category        String
+  compatibility   String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   createdByUserId String?
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  stockItems     StockItem[]
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  stockItems      StockItem[]
 
   @@unique([organizationId, sku])
   @@index([organizationId, name])
   @@index([organizationId, category])
 }
 
-enum StockStatus {
-  AVAILABLE
-  RESERVED
-  SOLD
-  DISCARDED
-}
-
 model StockItem {
-  id             String       @id @default(cuid())
-  organizationId String
-  partModelId    String
-  vehicleId      String?
-  locationId     String?
-  quantity       Int          @default(1)
-  status         StockStatus  @default(AVAILABLE)
-  priceUsd       Decimal      @db.Decimal(18, 2)
-  priceVes       Decimal?     @db.Decimal(18, 2)
-  notes          String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  organizationId  String
+  partModelId     String
+  vehicleId       String?
+  locationId      String?
+  quantity        Int          @default(1)
+  status          StockStatus  @default(AVAILABLE)
+  priceUsd        Decimal      @db.Decimal(18, 2)
+  priceVes        Decimal?     @db.Decimal(18, 2)
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   createdByUserId String?
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  partModel      PartModel    @relation(fields: [partModelId], references: [id])
-  vehicle        Vehicle?     @relation(fields: [vehicleId], references: [id])
-  location       Location?    @relation(fields: [locationId], references: [id])
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  partModel       PartModel    @relation(fields: [partModelId], references: [id])
+  vehicle         Vehicle?     @relation(fields: [vehicleId], references: [id])
+  location        Location?    @relation(fields: [locationId], references: [id])
 
-  saleItems      SaleItem[]
+  saleItems       SaleItem[]
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -181,16 +192,31 @@ model Sale {
 }
 
 model SaleItem {
-  id         String    @id @default(cuid())
-  saleId     String
-  stockItemId String
-  quantity   Int       @default(1)
-  unitPriceUsd Decimal? @db.Decimal(18, 2)
-  unitPriceVes Decimal? @db.Decimal(18, 2)
+  id            String    @id @default(cuid())
+  saleId        String
+  stockItemId   String
+  quantity      Int       @default(1)
+  unitPriceUsd  Decimal?  @db.Decimal(18, 2)
+  unitPriceVes  Decimal?  @db.Decimal(18, 2)
 
-  sale       Sale      @relation(fields: [saleId], references: [id])
-  stockItem  StockItem @relation(fields: [stockItemId], references: [id])
+  sale          Sale      @relation(fields: [saleId], references: [id])
+  stockItem     StockItem @relation(fields: [stockItemId], references: [id])
 
   @@index([saleId])
   @@index([stockItemId])
+}
+
+model OrgAllowedEmail {
+  id              String       @id @default(cuid())
+  organizationId  String
+  email           String
+  roleToAssign    Role         @default(STAFF)
+  createdAt       DateTime     @default(now())
+  createdByUserId String?
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([email])
 }
