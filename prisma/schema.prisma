@@ -48,6 +48,7 @@ model User {
 model Organization {
   id                String           @id @default(cuid())
   name              String
+  slug              String?           @unique
   status            OrgStatus        @default(ACTIVE)
   joinCodeHash      String?
   joinCodeExpiresAt DateTime?
