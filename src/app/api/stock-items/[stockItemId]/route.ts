@@ -11,10 +11,10 @@ const schema = z.object({
   notes: z.string().max(500).optional()
 });
 
-export async function PATCH(req: Request, ctx: { params: { stockItemId: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ stockItemId: string }> }) {
   const { userId } = await requireUser();
   const orgId = await requireOrgId(userId);
-  const stockItemId = ctx.params.stockItemId;
+  const { stockItemId } = await params;
 
   const membership = await prisma.membership.findUnique({
     where: { userId_organizationId: { userId, organizationId: orgId } },

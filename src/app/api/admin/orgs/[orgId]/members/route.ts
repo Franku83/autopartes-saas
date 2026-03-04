@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSuperadmin } from "@/lib/admin";
 
-export async function GET(req: Request, context: { params: Promise<{ orgId: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ orgId: string }> }) {
   await requireSuperadmin();
 
-  const { orgId } = await context.params;
+  const { orgId } = await params;
 
   if (!orgId || typeof orgId !== "string") {
     return NextResponse.json({ error: "ORG_ID_MISSING" }, { status: 400 });

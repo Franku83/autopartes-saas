@@ -14,10 +14,10 @@ const schema = z.object({
   notes: z.string().max(500).optional()
 });
 
-export async function POST(req: Request, ctx: { params: { vehicleId: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ vehicleId: string }> }) {
   const { userId } = await requireUser();
   const orgId = await requireOrgId(userId);
-  const vehicleId = ctx.params.vehicleId;
+  const { vehicleId } = await params;
 
   const membership = await prisma.membership.findUnique({
     where: { userId_organizationId: { userId, organizationId: orgId } },

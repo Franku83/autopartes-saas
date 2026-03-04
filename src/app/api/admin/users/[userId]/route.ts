@@ -7,10 +7,10 @@ const schema = z.object({
   isDisabled: z.boolean()
 });
 
-export async function PATCH(req: Request, ctx: { params: { userId: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ userId: string }> }) {
   await requireSuperadmin();
 
-  const userId = ctx.params.userId;
+  const { userId } = await params;
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);

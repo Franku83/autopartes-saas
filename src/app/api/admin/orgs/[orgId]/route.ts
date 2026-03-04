@@ -8,10 +8,10 @@ const schema = z.object({
   status: z.enum(["ACTIVE", "SUSPENDED"]).optional()
 });
 
-export async function PATCH(req: Request, context: { params: Promise<{ orgId: string }> }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ orgId: string }> }) {
   await requireSuperadmin();
 
-  const { orgId } = await context.params;
+  const { orgId } = await params;
 
   if (!orgId || typeof orgId !== "string") {
     return NextResponse.json({ error: "ORG_ID_MISSING" }, { status: 400 });

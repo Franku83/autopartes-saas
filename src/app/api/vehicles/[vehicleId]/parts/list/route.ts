@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireOrgId, requireUser } from "@/lib/session";
 
-export async function GET(req: Request, ctx: { params: { vehicleId: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ vehicleId: string }> }) {
   const { userId } = await requireUser();
   const orgId = await requireOrgId(userId);
-  const vehicleId = ctx.params.vehicleId;
+  const { vehicleId } = await params;
 
   const { searchParams } = new URL(req.url);
   const status = (searchParams.get("status") ?? "AVAILABLE").trim();
