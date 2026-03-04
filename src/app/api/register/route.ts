@@ -3,6 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { hashJoinCode } from "@/lib/join-code";
+import { slugify } from "@/lib/utils";
 
 const schema = z.object({
   name: z.string().min(2).max(80),
@@ -33,26 +34,17 @@ export async function POST(req: Request) {
   const passwordHash = await bcrypt.hash(password, 12);
   const accountType = parsed.data.accountType ?? "EMPLOYEE";
 
+  // TEMPORAL: Bypass whitelist/preapproval for initial admin setup
   if (accountType === "OWNER") {
-    const orgName = (parsed.data.orgName ?? "").trim();
-    if (!orgName) {
-      return NextResponse.json({ error: "ORG_NAME_REQUIRED" }, { status: 400 });
-    }
-
-    const pre = await prisma.orgOwnerPreapproval.findFirst({
-      where: { email: emailNorm, usedAt: null },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, organizationId: true }
-    });
-
-    if (!pre) {
-      return NextResponse.json({ error: "OWNER_NOT_APPROVED" }, { status: 403 });
-    }
-
+    const orgName = (parsed.data.orgName ?? "Mi Negocio").trim();
+    
     const result = await prisma.$transaction(async (tx) => {
-      await tx.organization.update({
-        where: { id: pre.organizationId },
-        data: { name: orgName }
+      // Create a brand new organization directly
+      const org = await tx.organization.create({
+        data: { 
+          name: orgName,
+          slug: slugify(orgName) || `org-${Date.now()}`
+        }
       });
 
       const user = await tx.user.create({
@@ -60,25 +52,23 @@ export async function POST(req: Request) {
           email: emailNorm,
           name: name.trim(),
           passwordHash,
-          lastOrganizationId: pre.organizationId,
+          lastOrganizationId: org.id,
           memberships: {
-            create: { organizationId: pre.organizationId, role: "OWNER" }
+            create: { organizationId: org.id, role: "OWNER" }
           }
         },
         select: { id: true }
       });
 
-      await tx.orgOwnerPreapproval.update({
-        where: { id: pre.id },
-        data: { usedAt: new Date() }
-      });
-
-      return { userId: user.id, organizationId: pre.organizationId };
+      return { userId: user.id, organizationId: org.id };
     });
 
     return NextResponse.json(result, { status: 201 });
   }
 
+  // For EMPLOYEE, we still need an orgId. If none provided, we can't register without joinCode or whitelist
+  // unless we're in "bypass" mode. But usually the first account is an OWNER.
+  
   const joinCode = (parsed.data.joinCode ?? "").trim();
   const orgIdHint = (parsed.data.organizationId ?? "").trim();
 
@@ -121,6 +111,8 @@ export async function POST(req: Request) {
     });
 
     if (!allowed) {
+      // TEMPORAL BYPASS for initial setup: if no join code and no whitelist, we still block 
+      // but the user should use OWNER type for the first account.
       return NextResponse.json({ error: "NOT_ALLOWED" }, { status: 403 });
     }
 
