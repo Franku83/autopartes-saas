@@ -1,7 +1,7 @@
 import { withAuth } from "next-auth/middleware";
 
 // Expose these paths to everyone.
-const publicRoutes = ["/public", "/login", "/register", "/api/auth", "/api/register"];
+const publicRoutes = ["/public", "/login", "/api/auth"];
 
 export default withAuth(
   function middleware() {
