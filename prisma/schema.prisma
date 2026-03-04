@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -24,6 +18,11 @@ enum GlobalRole {
   USER
 }
 
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum StockStatus {
   AVAILABLE
   RESERVED
@@ -37,6 +36,7 @@ model User {
   name               String?
   passwordHash       String
   globalRole         GlobalRole  @default(USER)
+  isDisabled         Boolean     @default(false)
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
   lastOrganizationId String?
@@ -46,23 +46,25 @@ model User {
 }
 
 model Organization {
-  id               String           @id @default(cuid())
-  name             String
-  joinCodeHash     String?
+  id                String           @id @default(cuid())
+  name              String
+  status            OrgStatus        @default(ACTIVE)
+  joinCodeHash      String?
   joinCodeExpiresAt DateTime?
-  joinCodeMaxUses  Int?
-  joinCodeUses     Int              @default(0)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  joinCodeMaxUses   Int?
+  joinCodeUses      Int              @default(0)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  memberships      Membership[]
-  locations        Location[]
-  vehicles         Vehicle[]
-  partModels       PartModel[]
-  stockItems       StockItem[]
-  sales            Sale[]
-  exchangeRates    ExchangeRate[]
-  allowedEmails    OrgAllowedEmail[]
+  memberships       Membership[]
+  locations         Location[]
+  vehicles          Vehicle[]
+  partModels        PartModel[]
+  stockItems        StockItem[]
+  sales             Sale[]
+  exchangeRates     ExchangeRate[]
+  allowedEmails     OrgAllowedEmail[]
+  ownerPreapprovals OrgOwnerPreapproval[]
 }
 
 model Membership {
@@ -192,15 +194,15 @@ model Sale {
 }
 
 model SaleItem {
-  id            String    @id @default(cuid())
-  saleId        String
-  stockItemId   String
-  quantity      Int       @default(1)
-  unitPriceUsd  Decimal?  @db.Decimal(18, 2)
-  unitPriceVes  Decimal?  @db.Decimal(18, 2)
+  id           String    @id @default(cuid())
+  saleId       String
+  stockItemId  String
+  quantity     Int       @default(1)
+  unitPriceUsd Decimal?  @db.Decimal(18, 2)
+  unitPriceVes Decimal?  @db.Decimal(18, 2)
 
-  sale          Sale      @relation(fields: [saleId], references: [id])
-  stockItem     StockItem @relation(fields: [stockItemId], references: [id])
+  sale         Sale      @relation(fields: [saleId], references: [id])
+  stockItem    StockItem @relation(fields: [stockItemId], references: [id])
 
   @@index([saleId])
   @@index([stockItemId])
@@ -219,4 +221,18 @@ model OrgAllowedEmail {
   @@unique([organizationId, email])
   @@index([organizationId])
   @@index([email])
+}
+
+model OrgOwnerPreapproval {
+  id             String       @id @default(cuid())
+  organizationId String
+  email          String
+  createdAt      DateTime     @default(now())
+  usedAt         DateTime?
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, email])
+  @@index([email])
+  @@index([organizationId])
 }

@@ -10,6 +10,15 @@ export async function requireUser() {
     throw new Error("UNAUTHORIZED");
   }
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isDisabled: true }
+  });
+
+  if (!user || user.isDisabled) {
+    throw new Error("USER_DISABLED");
+  }
+
   return { userId };
 }
 
@@ -19,22 +28,39 @@ export async function requireOrgId(userId: string) {
     select: { lastOrganizationId: true }
   });
 
-  if (user?.lastOrganizationId) return user.lastOrganizationId;
+  let orgId = user?.lastOrganizationId ?? null;
 
-  const membership = await prisma.membership.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-    select: { organizationId: true }
+  if (!orgId) {
+    const membership = await prisma.membership.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+      select: { organizationId: true }
+    });
+
+    if (!membership) {
+      throw new Error("NO_WORKSPACE");
+    }
+
+    orgId = membership.organizationId;
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { lastOrganizationId: orgId }
+    });
+  }
+
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { status: true }
   });
 
-  if (!membership) {
+  if (!org) {
     throw new Error("NO_WORKSPACE");
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { lastOrganizationId: membership.organizationId }
-  });
+  if (org.status === "SUSPENDED") {
+    throw new Error("ORG_SUSPENDED");
+  }
 
-  return membership.organizationId;
+  return orgId;
 }
