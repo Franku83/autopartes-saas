@@ -13,7 +13,9 @@ export default withAuth(
         const path = req.nextUrl.pathname;
         
         // Check if path is public.
-        const isPublic = publicRoutes.some(route => path.startsWith(route));
+        const isPublic = publicRoutes.some(route => 
+          path === route || path.startsWith(route + "/")
+        );
         if (isPublic) return true;
 
         // Otherwise, a token is required (forces redirect to login).
